@@ -60,6 +60,9 @@ class pvMon():
   def monCallback(self, **kw):
     self.last_val = self.val
     self.val = kw['value']
+    print("callback!")
+    stdout.write("stdout write!")
+    stdout.flush()
     # Check to see if notify conidition is satisfied
     if self.compare(self.val, self.notify_value):
       # Check to see if a notification needs to be sent
@@ -91,11 +94,14 @@ def process_data(threadName, q):
     queueLock.acquire()
     if not workQueue.empty():
       print("work queue isn't empty!")
-      data = q.get()
+      function, kw = q.get()
       ### This will send the emails
-      print(data, "Hi Kevin")
+      print(kw, "Hi Kevin")
+      
+      function(kw["pv_name"], kw["comparison"], kw["value"], kw["email"])
+      
       queueLock.release()
-      print ("%s processing %s" % (threadName, data))
+      print ("%s processing %s" % (threadName, kw))
     else:
       queueLock.release()
       
@@ -128,7 +134,10 @@ def createMonitor(pv_name, comparison, value, email):
 @dispatcher.add_method
 def addNotification(**kw):
     # Call a function to create a monitor with an email notification callback
-    createMonitor(kw["pv_name"], kw["comparison"], kw["value"], kw["email"])
+    #!createMonitor(kw["pv_name"], kw["comparison"], kw["value"], kw["email"])
+    
+    # let the EPICS thread create the monitors
+    workQueue.put((createMonitor, kw))
     return "Kevin was here"
 
 @Request.application
