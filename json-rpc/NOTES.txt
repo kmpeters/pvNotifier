@@ -1,0 +1,9 @@
+    71	13:09	alias 'python3' /APSshare/anaconda3/x86_64/bin/python
+    79	13:11	wget https://pypi.python.org/packages/df/cc/1ba8ca75b9e45eae5d146b9e45f64d344f616f89422ecfab9a7a6f0968b8/json-rpc-1.10.3.tar.gz#md5=24e9765de545ed2df6f06e229c88a9c8
+    81	13:11	tar xzvf json-rpc-1.10.3.tar.gz
+    83	13:11	mkdir python-modules
+    85	13:11	cd json-rpc-1.10.3
+    89	13:14	python3 setup.py build
+    91	13:16	echo $PYTHONPATH
+    92	13:16	setenv PYTHONPATH /home/oxygen/KPETERSN/development/pvNotifier/python-modules/lib/python3.5/site-packages
+    93	13:16	python3 setup.py install --prefix=~/development/pvNotifier/python-modules
