@@ -33,14 +33,10 @@ class pvMon():
     self.last_val = None
     self.val = None
     self.notify_comparison = notify_comparison
-    self.notify_value = notify_value
-    self.compare = None
+    self.notify_value = float(notify_value)
     self.email = email
+    self.monCallbackInit = False
 
-  def createMon(self):
-    # Create the PV opject with monitors
-    self.pv_obj = epics.PV(pv_name, callback=self.monCallback, connect_callback=self.connCallback)
-    
     # Create the comparision function
     if self.notify_comparison == "==":
       self.compare = lambda a, b: a == b
@@ -56,20 +52,31 @@ class pvMon():
       self.compare = lambda a, b: a >= b
     else:
       self.compare = lambda a, b: False
+
+  def createMon(self):
+    # Create the PV opject with monitors
+    self.pv_obj = epics.PV(self.pv_name, callback=self.monCallback, connection_callback=self.connCallback)
+    
       
   def monCallback(self, **kw):
-    self.last_val = self.val
-    self.val = kw['value']
-    print("callback!")
-    stdout.write("stdout write!")
-    stdout.flush()
-    # Check to see if notify conidition is satisfied
-    if self.compare(self.val, self.notify_value):
-      # Check to see if a notification needs to be sent
-      if not self.compare(self.last_val, self.notify_value):
-        # Add the job of sending the email notification to the work queue
-        stdout.write("NOTIFICATION CONDITION!")
-        stdout.flush()
+    if self.monCallbackInit == False:
+      self.val = kw['value']
+      print("self.last_val =", self.last_val, "; self.val =", self.val)
+      self.monCallbackInit = True
+    else:
+      self.last_val = self.val
+      self.val = kw['value']
+      print("self.last_val =", self.last_val, "; self.val =", self.val)
+      print("callback!")
+      stdout.write("stdout write!\n")
+      stdout.flush()
+      # Check to see if notify conidition is satisfied
+      if self.compare(self.val, self.notify_value):
+        # Check to see if a notification needs to be sent
+        if not self.compare(self.last_val, self.notify_value):
+          # Add the job of sending the email notification to the work queue
+          stdout.write("NOTIFICATION CONDITION!\n")
+          stdout.flush()
 
   def connCallback(self, **kw):
     print("connection change:\n", "  ", kw['pvname'], kw['conn'])
@@ -96,7 +103,7 @@ def process_data(threadName, q):
       print("work queue isn't empty!")
       function, kw = q.get()
       ### This will send the emails
-      print(kw, "Hi Kevin")
+      print(kw, "!!!!!!! Hi Kevin")
       
       function(kw["pv_name"], kw["comparison"], kw["value"], kw["email"])
       
@@ -114,6 +121,7 @@ def createMonitor(pv_name, comparison, value, email):
   ###
   key=pv_name+";"+comparison+";"+value
   monitored_pvs[key] = pvMon(pv_name, comparison, value, email)
+  monitored_pvs[key].createMon()
 
 
 
