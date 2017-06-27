@@ -154,8 +154,12 @@ def application(request):
     dispatcher["echo"] = lambda s: s
     dispatcher["add"] = lambda a, b: a + b
 
-    response = JSONRPCResponseManager.handle(
-        request.get_data(cache=False, as_text=True), dispatcher)
+    # Returns a binary string
+    #!data = request.data
+    # Returns an ascii string
+    data = request.get_data(cache=False, as_text=True)
+
+    response = JSONRPCResponseManager.handle(data, dispatcher)
         
     print(monitored_pvs)
     return Response(response.json, mimetype='application/json')
