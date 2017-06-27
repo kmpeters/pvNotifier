@@ -20,6 +20,17 @@ def main():
 
     print(response)
    
+    # Example echo method
+    payload = {
+        "method": "addNotification",
+        "params": {"pv_name":"kmp3:m1.VAL", "comparison":"<", "value":"-2.0", "email":"kmpeters@anl.gov", "expiration":"Probably"},
+        "jsonrpc": "2.0",
+        "id": 1,
+    }
+    response = requests.post(
+        url, data=json.dumps(payload), headers=headers).json()
+
+    print(response)
 
 if __name__ == "__main__":
     main()

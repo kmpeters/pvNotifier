@@ -11,6 +11,7 @@ from werkzeug.wrappers import Request, Response
 from werkzeug.serving import run_simple
 
 from jsonrpc import JSONRPCResponseManager, dispatcher
+import json
 
 import epics
 
@@ -20,6 +21,8 @@ import threading
 from sys import stdout
 
 monitored_pvs = {}
+
+logfile = "monitors.txt"
 
 #
 exitFlag = False
@@ -123,8 +126,6 @@ def createMonitor(pv_name, comparison, value, email):
   monitored_pvs[key] = pvMon(pv_name, comparison, value, email)
   monitored_pvs[key].createMon()
 
-
-
 # json payloads will contain the following arguments
 #  method
 #  params
@@ -146,6 +147,14 @@ def addNotification(**kw):
     
     # let the EPICS thread create the monitors
     workQueue.put((createMonitor, kw))
+    
+    # append the monitor request to the log file
+    fh = open(logfile, 'a')
+    fh.write(json.dumps(kw))
+    fh.write('\n')
+    fh.close()
+    
+    # This should evenutally return an error if the workQueue is full
     return "Kevin was here"
 
 @Request.application
@@ -166,10 +175,19 @@ def application(request):
 
 if __name__ == '__main__':
     queueLock = threading.Lock()
-    workQueue = queue.Queue(10)
+    workQueue = queue.Queue(100)
+    
+    # Add logged requests to the workQueue
+    fh = open(logfile, 'r')
+    for line in fh:
+      workQueue.put((createMonitor, json.loads(line)))
+    fh.close()
+    
     # Spawn EPICS thread
     eTh = epicsThread(1, "epicsThread", workQueue)
     eTh.start()
     
     # Start JSON-RPC server
     run_simple('localhost', 4000, application)
+
+    print("The JSON-RPC server has started")
