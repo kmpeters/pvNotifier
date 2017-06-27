@@ -39,6 +39,7 @@ class pvMon():
     self.notify_value = float(notify_value)
     self.email = email
     self.monCallbackInit = False
+    self.connCallbackInit = False
 
     # Create the comparision function
     if self.notify_comparison == "==":
@@ -82,8 +83,11 @@ class pvMon():
           stdout.flush()
 
   def connCallback(self, **kw):
-    print("connection change:\n", "  ", kw['pvname'], kw['conn'])
-
+    if self.connCallbackInit == False:
+      # Ignore the first callback, which happens when the PV first connects
+      self.connCallbackInit = True
+    else:
+      print("connection change:\n", "  ", kw['pvname'], kw['conn'])
 
 
 class epicsThread (threading.Thread):
