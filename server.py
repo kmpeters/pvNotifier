@@ -160,6 +160,7 @@ def addNotification(**kw):
     fh.close()
     
     # This should evenutally return an error if the workQueue is full
+    # It should return a warning if the notification already exists
     return "Kevin was here"
 
 @dispatcher.add_method
