@@ -40,6 +40,7 @@ class pvMon():
     self.email = email
     self.monCallbackInit = False
     self.connCallbackInit = False
+    self.state = None
 
     # Create the comparision function
     if self.notify_comparison == "==":
@@ -160,6 +161,20 @@ def addNotification(**kw):
     
     # This should evenutally return an error if the workQueue is full
     return "Kevin was here"
+
+@dispatcher.add_method
+def listNotifications(**kw):
+    # Return a list of all of the notifications 
+    
+    monitors = []
+    
+    # append the monitor request to the log file
+    fh = open(logfile, 'r')
+    for line in fh:
+      monitors.append(json.loads(line))
+    fh.close()
+    
+    return {"monitors" : monitors[:]}
 
 @Request.application
 def application(request):
