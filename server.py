@@ -14,6 +14,7 @@ from jsonrpc import JSONRPCResponseManager, dispatcher
 import json
 
 import epics
+import time
 
 import queue
 import threading
@@ -131,6 +132,26 @@ def createMonitor(pv_name, comparison, value, email):
   monitored_pvs[key] = pvMon(pv_name, comparison, value, email)
   monitored_pvs[key].createMon()
 
+
+def monitorCheck(kw):
+  #
+  key = kw['pv_name']+';'+kw['comparison']+';'+kw['value']
+  #!print(key)
+  #!print(monitored_pvs.keys())
+  
+  while not workQueue.empty():
+    time.sleep(0.2)
+  
+  if key in monitored_pvs.keys():
+    #!print("This monitor is a DUPE!")
+    retval = True
+  else:
+    #!print("This monitor doesn't exist yet.")
+    retval = False
+    
+  return retval
+  
+
 # json payloads will contain the following arguments
 #  method
 #  params
@@ -147,21 +168,27 @@ def createMonitor(pv_name, comparison, value, email):
 
 @dispatcher.add_method
 def addNotification(**kw):
-    # Call a function to create a monitor with an email notification callback
-    #!createMonitor(kw["pv_name"], kw["comparison"], kw["value"], kw["email"])
+    # Add an email notification
+
+    monitorExists = monitorCheck(kw)
+
+    if not monitorExists:
+      # let the EPICS thread create the monitors
+      workQueue.put((createMonitor, kw))
     
-    # let the EPICS thread create the monitors
-    workQueue.put((createMonitor, kw))
-    
-    # append the monitor request to the log file
-    fh = open(logfile, 'a')
-    fh.write(json.dumps(kw, sort_keys=True))
-    fh.write('\n')
-    fh.close()
+      # append the monitor request to the log file
+      fh = open(logfile, 'a')
+      fh.write(json.dumps(kw, sort_keys=True))
+      fh.write('\n')
+      fh.close()
+      
+      retval = True
+    else:
+      retval = False
     
     # This should evenutally return an error if the workQueue is full
     # It should return a warning if the notification already exists
-    return "Kevin was here"
+    return retval
 
 @dispatcher.add_method
 def listNotifications(**kw):
@@ -194,7 +221,7 @@ def application(request):
 
     response = JSONRPCResponseManager.handle(data, dispatcher)
         
-    print(monitored_pvs)
+    #!print(monitored_pvs)
     return Response(response.json, mimetype='application/json')
 
 if __name__ == '__main__':
