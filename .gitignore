@@ -1,4 +1,7 @@
 json-rpc-1.10.3*
 python-modules
 monitors.txt
-
+test*
+json-rpc
+xml-rpc
+env
