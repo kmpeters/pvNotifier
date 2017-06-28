@@ -155,7 +155,7 @@ def addNotification(**kw):
     
     # append the monitor request to the log file
     fh = open(logfile, 'a')
-    fh.write(json.dumps(kw))
+    fh.write(json.dumps(kw, sort_keys=True))
     fh.write('\n')
     fh.close()
     
@@ -170,10 +170,14 @@ def listNotifications(**kw):
     monitors = []
     
     # append the monitor request to the log file
-    fh = open(logfile, 'r')
-    for line in fh:
-      monitors.append(json.loads(line))
-    fh.close()
+    try:
+      fh = open(logfile, 'r')
+    except FileNotFoundError as err:
+      print(err)
+    else:
+      for line in fh:
+        monitors.append(json.loads(line))
+      fh.close()
     
     return {"monitors" : monitors[:]}
 
@@ -198,10 +202,15 @@ if __name__ == '__main__':
     workQueue = queue.Queue(100)
     
     # Add logged requests to the workQueue
-    fh = open(logfile, 'r')
-    for line in fh:
-      workQueue.put((createMonitor, json.loads(line)))
-    fh.close()
+    try:
+      fh = open(logfile, 'r')
+    except FileNotFoundError as err:
+      #!print(err)
+      print("'{0}' doesn't exist; no monitors loaded".format(logfile))
+    else:
+      for line in fh:
+        workQueue.put((createMonitor, json.loads(line)))
+      fh.close()
     
     # Spawn EPICS thread
     eTh = epicsThread(1, "epicsThread", workQueue)
