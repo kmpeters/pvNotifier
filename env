@@ -1,4 +1,0 @@
-alias 'python3' /APSshare/anaconda3/x86_64/bin/python
-
-setenv PYTHONPATH /home/oxygen/KPETERSN/development/pvNotifier/python-modules/lib/python3.5/site-packages
-
