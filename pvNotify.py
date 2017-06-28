@@ -52,7 +52,7 @@ def main(options):
 if __name__ == "__main__":
   parser = argparse.ArgumentParser("pvNotify.py")
   
-  subparsers = parser.add_subparsers(help='commands')
+  subparsers = parser.add_subparsers(help='commands', dest='command')
   
   # An add command
   add_parser = subparsers.add_parser('add', help='Add notification')
@@ -73,6 +73,7 @@ if __name__ == "__main__":
 
   options = parser.parse_args(sys.argv[1:])
   print(options)
+  #!print(vars(options))
   
   main(options)
  
