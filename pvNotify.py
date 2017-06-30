@@ -5,10 +5,14 @@ import sys
 import requests
 import json
 
-def notMain():
-    url = "http://localhost:4000/jsonrpc"
-    headers = {'content-type': 'application/json'}
+import time
 
+import pprint
+
+url = "http://localhost:4000/jsonrpc"
+headers = {'content-type': 'application/json'}
+
+def notMain():
     # Add monitor
     payload = {
         "method": "addNotification",
@@ -33,20 +37,51 @@ def notMain():
 
     print(response)
 
+
+
+def listCommand(options):
+  pattern = options.pattern
+  
+  if pattern != None:
+    print("pattern hasn't been implemented yet")
+  else:
+    ### Get all the notifications
+    
+    idNum = round(time.time())
+    #!print(idNum)
+    
     # Get the list of monitors
     payload = {
         "method": "listNotifications",
         "params": {},
         "jsonrpc": "2.0",
-        "id": 2,
+        "id": idNum,
     }
-    response = requests.post(
-        url, data=json.dumps(payload), headers=headers).json()
+    
+    data = json.dumps(payload)
+    response = requests.post(url, data=data, headers=headers).json()
 
-    print(response)
+    if (idNum != response['id']):
+      print("Error: Response ID (%i) doesn't match Request ID (%i)".format(response['id'], idNum))
+    else:
+      #!pprint.pprint(response)
+      
+      data = response['result']
+      monitors = data['monitors']
+      
+      if len(monitors) == 0:
+        print("There are no monitors to display")
+      else:
+        print("pv_name\t\ttest\tvalue\temail")
+      
+        for monitor in monitors:
+          #!pprint.pprint(monitor)
+          print("{0}\t{1}\t{2}\t{3}".format(monitor['pv_name'], monitor['comparison'], monitor['value'], monitor['email']))
+        
 
 def main(options):
-  pass
+  if options.command == 'list':
+    listCommand(options)
 
 
 if __name__ == "__main__":
