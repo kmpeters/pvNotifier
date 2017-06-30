@@ -114,7 +114,7 @@ def process_data(threadName, q):
       ### This will send the emails
       print(kw, "!!!!!!! Hi Kevin")
       
-      function(kw["pv_name"], kw["comparison"], kw["value"], kw["email"])
+      function(kw)
       
       queueLock.release()
       print ("%s processing %s" % (threadName, kw))
@@ -126,16 +126,28 @@ def process_data(threadName, q):
         epics.poll(evt=1.e-2, iot=0.1)
 
 
-def createMonitor(pv_name, comparison, value, email):
+def createMonitor(kw):
   ###
-  key=pv_name+";"+comparison+";"+value
-  monitored_pvs[key] = pvMon(pv_name, comparison, value, email)
+  key = kwToKey(kw)
+  monitored_pvs[key] = pvMon(kw['pv_name'], kw['comparison'], kw['value'], kw['email'])
   monitored_pvs[key].createMon()
 
+def deleteMonitor(kw):
+  key = kw['key']
+  
+  monitorObj = monitored_pvs.pop(key)
+  
+  print(monitorObj)
+  
+  pvObj = monitorObj.pv_obj
+  
+  print(pvObj)
+  print(pvObj.callbacks)
 
-def monitorCheck(kw):
-  #
-  key = kw['pv_name']+';'+kw['comparison']+';'+kw['value']
+def kwToKey(kw):
+  return kw['pv_name']+';'+kw['comparison']+';'+kw['value']
+
+def monitorCheck(key):
   #!print(key)
   #!print(monitored_pvs.keys())
   
@@ -170,7 +182,8 @@ def monitorCheck(kw):
 def addNotification(**kw):
     # Add an email notification
 
-    monitorExists = monitorCheck(kw)
+    key = kwToKey(kw)
+    monitorExists = monitorCheck(key)
 
     if not monitorExists:
       # let the EPICS thread create the monitors
@@ -207,6 +220,29 @@ def listNotifications(**kw):
       fh.close()
     
     return {"monitors" : monitors[:]}
+
+@dispatcher.add_method
+def deleteNotification(**kw):
+    # Delete a notification
+    
+    key = kw['key']
+    monitorExists = monitorCheck(key)
+
+    print(key, monitorExists)
+
+    print(monitored_pvs.keys())
+
+    if not monitorExists:
+      retval = False
+    else:
+      workQueue.put((deleteMonitor, kw))
+      
+      # remove the montior from the log file
+      # TODO: figure out the best way to do this
+      
+      retval = True
+    
+    return None
 
 @Request.application
 def application(request):

@@ -80,11 +80,41 @@ def listCommand(options):
           print("{0}\t{1}\t{2}\t{3}".format(monitor['pv_name'], monitor['comparison'], monitor['value'], monitor['email']))
         
 
+def deleteCommand(options):
+  pattern = options.pattern
+  index = options.index
+  
+  if index != None:
+    print("index hasn't been implemented yet")
+  else:
+    
+    idNum = round(time.time())
+    #!print(idNum)
+    
+    # Get the list of monitors
+    payload = {
+        "method": "deleteNotification",
+        "params": {"key" : pattern},
+        "jsonrpc": "2.0",
+        "id": idNum,
+    }
+    
+    data = json.dumps(payload)
+    response = requests.post(url, data=data, headers=headers).json()
+
+    if (idNum != response['id']):
+      print("Error: Response ID (%i) doesn't match Request ID (%i)".format(response['id'], idNum))
+    else:
+      pprint.pprint(response)
+
+
 def main(options):
   if options.command == 'list':
     listCommand(options)
   elif options.command == 'add':
     addCommand(options)
+  elif options.command == 'delete':
+    deleteCommand(options)
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser("pvNotify.py")
