@@ -38,6 +38,31 @@ def notMain():
     print(response)
 
 
+def addCommand(options):
+  # value is a string
+  #!print(type(options.value))
+  
+  idNum = round(time.time())
+
+  payload = {
+      "method": "addNotification",
+      "params": {"pv_name" : options.pv, "comparison" : options.test, "value" : options.value, "email" : options.email, "expiration" : None},
+      "jsonrpc": "2.0",
+      "id": idNum,
+  }
+
+  data = json.dumps(payload)
+  response = requests.post(url, data=data, headers=headers).json()
+  
+  #!print(response)
+  
+  if (idNum != response['id']):
+    print("Error: Response ID (%i) doesn't match Request ID (%i)".format(response['id'], idNum))
+  else:
+    if response['result'] == True:
+      print("Monitor added successfully")
+    else:
+      print("Monitor already exists")
 
 def listCommand(options):
   pattern = options.pattern
@@ -82,7 +107,8 @@ def listCommand(options):
 def main(options):
   if options.command == 'list':
     listCommand(options)
-
+  elif options.command == 'add':
+    addCommand(options)
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser("pvNotify.py")
