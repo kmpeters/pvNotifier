@@ -12,31 +12,6 @@ import pprint
 url = "http://localhost:4000/jsonrpc"
 headers = {'content-type': 'application/json'}
 
-def notMain():
-    # Add monitor
-    payload = {
-        "method": "addNotification",
-        "params": {"pv_name":"kmp3:m1.VAL", "comparison":">", "value":"6.0", "email":"kmpeters@anl.gov", "expiration":"Probably"},
-        "jsonrpc": "2.0",
-        "id": 0,
-    }
-    response = requests.post(
-        url, data=json.dumps(payload), headers=headers).json()
-
-    print(response)
-   
-    # Add a monitor
-    payload = {
-        "method": "addNotification",
-        "params": {"pv_name":"kmp3:m1.VAL", "comparison":"<", "value":"-2.0", "email":"kmpeters@anl.gov", "expiration":"Probably"},
-        "jsonrpc": "2.0",
-        "id": 1,
-    }
-    response = requests.post(
-        url, data=json.dumps(payload), headers=headers).json()
-
-    print(response)
-
 
 def addCommand(options):
   # value is a string
@@ -63,6 +38,7 @@ def addCommand(options):
       print("Monitor added successfully")
     else:
       print("Monitor already exists")
+
 
 def listCommand(options):
   pattern = options.pattern
