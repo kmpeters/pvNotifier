@@ -1,146 +1,97 @@
 #!/APSshare/anaconda3/x86_64/bin/python
 
-import argparse
-import sys
-import requests
-import json
+import epics
+import datetime as dt
 
-import time
+from sys import stdout
 
-import pprint
+# Note: the pvs.txt file has one monitor per line. Arguments are space-separated. Email list is comma-separated.
+# Example pvs.txt:
+# kmp3:m1.VAL > 65.0 kmpeters@anl.gov
+# kmp3:m2.VAL < 0.0 kpetersn@anl.gov,kmpeters@anl.gov
 
-url = "http://localhost:4000/jsonrpc"
-headers = {'content-type': 'application/json'}
+filename = "pvs.txt"
 
+class pvMon():
+  def __init__(self, pv_name="", notify_comparison=None, notify_value=None, email=None):
+    self.pv_name = pv_name
+    self.pv_obj = None
+    self.last_val = None
+    self.val = None
+    self.notify_comparison = notify_comparison
+    self.notify_value = float(notify_value)
+    self.email = email
+    self.monCallbackInit = False
+    self.connCallbackInit = False
+    self.state = None
 
-def addCommand(options):
-  # value is a string
-  #!print(type(options.value))
-  
-  idNum = round(time.time())
-
-  payload = {
-      "method": "addNotification",
-      "params": {"pv_name" : options.pv, "comparison" : options.test, "value" : options.value, "email" : options.email, "expiration" : None},
-      "jsonrpc": "2.0",
-      "id": idNum,
-  }
-
-  data = json.dumps(payload)
-  response = requests.post(url, data=data, headers=headers).json()
-  
-  #!print(response)
-  
-  if (idNum != response['id']):
-    print("Error: Response ID (%i) doesn't match Request ID (%i)".format(response['id'], idNum))
-  else:
-    if response['result'] == True:
-      print("Monitor added successfully")
+    # Create the comparision function
+    if self.notify_comparison == "==":
+      self.compare = lambda a, b: a == b
+    elif self.notify_comparison == "!=":
+      self.compare = lambda a, b: a != b
+    elif self.notify_comparison == "<":
+      self.compare = lambda a, b: a < b
+    elif self.notify_comparison == "<=":
+      self.compare = lambda a, b: a <= b
+    elif self.notify_comparison == ">":
+      self.compare = lambda a, b: a > b
+    elif self.notify_comparison == ">=":
+      self.compare = lambda a, b: a >= b
     else:
-      print("Monitor already exists")
+      self.compare = lambda a, b: False
 
-
-def listCommand(options):
-  pattern = options.pattern
-  
-  if pattern != None:
-    print("pattern hasn't been implemented yet")
-  else:
-    ### Get all the notifications
-    
-    idNum = round(time.time())
-    #!print(idNum)
-    
-    # Get the list of monitors
-    payload = {
-        "method": "listNotifications",
-        "params": {},
-        "jsonrpc": "2.0",
-        "id": idNum,
-    }
-    
-    data = json.dumps(payload)
-    response = requests.post(url, data=data, headers=headers).json()
-
-    if (idNum != response['id']):
-      print("Error: Response ID (%i) doesn't match Request ID (%i)".format(response['id'], idNum))
+  def createMon(self):
+    # Create the PV opject with monitors
+    self.pv_obj = epics.PV(self.pv_name, callback=self.monCallback, connection_callback=self.connCallback)
+      
+  def monCallback(self, **kw):
+    if self.monCallbackInit == False:
+      self.val = kw['value']
+      #!print("self.last_val =", self.last_val, "; self.val =", self.val)
+      self.monCallbackInit = True
+      # Check to see notification condition is violated at startup
+      if self.compare(self.val, self.notify_value):
+        # Print a warning
+        print("[{}]: {} is {} which is {} {}, at startup. No emails sent.".format(dt.datetime.fromtimestamp(kw["timestamp"]), kw["pvname"], kw["value"], self.notify_comparison, self.notify_value))
     else:
-      #!pprint.pprint(response)
+      self.last_val = self.val
+      self.val = kw['value']
+      #!print("self.last_val =", self.last_val, "; self.val =", self.val)
       
-      data = response['result']
-      monitors = data['monitors']
-      
-      if len(monitors) == 0:
-        print("There are no monitors to display")
-      else:
-        print("pv_name\t\ttest\tvalue\temail")
-      
-        for monitor in monitors:
-          #!pprint.pprint(monitor)
-          print("{0}\t{1}\t{2}\t{3}".format(monitor['pv_name'], monitor['comparison'], monitor['value'], monitor['email']))
-        
+      # Check to see if notify condition is satisfied
+      if self.compare(self.val, self.notify_value):
+        # Check to see if a notification needs to be sent
+        if not self.compare(self.last_val, self.notify_value):
+          # Send the notification
+          print("[{}]: {} is {} which is {} {}, emailing {}".format(dt.datetime.fromtimestamp(kw["timestamp"]), kw["pvname"], kw["value"], self.notify_comparison, self.notify_value, self.email))
 
-def deleteCommand(options):
-  pattern = options.pattern
-  index = options.index
-  
-  if index != None:
-    print("index hasn't been implemented yet")
-  else:
-    
-    idNum = round(time.time())
-    #!print(idNum)
-    
-    # Get the list of monitors
-    payload = {
-        "method": "deleteNotification",
-        "params": {"key" : pattern},
-        "jsonrpc": "2.0",
-        "id": idNum,
-    }
-    
-    data = json.dumps(payload)
-    response = requests.post(url, data=data, headers=headers).json()
-
-    if (idNum != response['id']):
-      print("Error: Response ID (%i) doesn't match Request ID (%i)".format(response['id'], idNum))
+  def connCallback(self, **kw):
+    if self.connCallbackInit == False:
+      # Ignore the first callback, which happens when the PV first connects
+      self.connCallbackInit = True
     else:
-      pprint.pprint(response)
+      print("connection change:\n", "  ", kw['pvname'], kw['conn'])
 
 
-def main(options):
-  if options.command == 'list':
-    listCommand(options)
-  elif options.command == 'add':
-    addCommand(options)
-  elif options.command == 'delete':
-    deleteCommand(options)
-
-if __name__ == "__main__":
-  parser = argparse.ArgumentParser("pvNotify.py")
+if __name__ == '__main__':
+  #
+  monitors = []
   
-  subparsers = parser.add_subparsers(help='commands', dest='command')
+  # Do the stuff
+  fh = open(filename, "r")
+  for line in fh:
+    args = line.strip().split(" ")
+    if len(args) == 4:
+      print(args)
+      pv, compare, value, email = args
+      
+      pvMonObj = pvMon(pv, compare, value, email)
+      monitors.append(pvMonObj)
+      pvMonObj.createMon()
+   
+  #print(monitors)
   
-  # An add command
-  add_parser = subparsers.add_parser('add', help='Add notification')
-  add_parser.add_argument('pv', action="store", default=None, help='PV to monitor')
-  add_parser.add_argument('test', action="store", default=None, help='Comparison (==, !=, <, <=, >, >=)')
-  add_parser.add_argument('value', action="store", default=None, help='Notification value')
-  add_parser.add_argument('email', action="store", default=None, help='Email addresses to notify')
-  
-  # A delete command
-  delete_parser = subparsers.add_parser('delete', help='Delete notification')
-  delete_parser_group = delete_parser.add_mutually_exclusive_group(required=True)
-  delete_parser_group.add_argument('-p', action='store', dest='pattern', help='Pattern to match')
-  delete_parser_group.add_argument('-i', action='store', dest='index', help='Notification index')
-  
-  # A list command
-  list_parser = subparsers.add_parser('list', help='List notifications')
-  list_parser.add_argument('-p', action='store', dest='pattern', help='Pattern to match')
-
-  options = parser.parse_args(sys.argv[1:])
-  print(options)
-  #!print(vars(options))
-  
-  main(options)
- 
+  # Wait for monitors
+  while True:
+    epics.poll(evt=1.0e-5, iot=0.1)
