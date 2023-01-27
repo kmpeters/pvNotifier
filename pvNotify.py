@@ -2,8 +2,7 @@
 
 import epics
 import datetime as dt
-
-from sys import stdout
+import os
 
 # Note: the pvs.txt file has one monitor per line. Arguments are space-separated. Email list is comma-separated.
 # Example pvs.txt:
@@ -64,7 +63,11 @@ class pvMon():
         # Check to see if a notification needs to be sent
         if not self.compare(self.last_val, self.notify_value):
           # Send the notification
-          print("[{}]: {} is {} which is {} {}, emailing {}".format(dt.datetime.fromtimestamp(kw["timestamp"]), kw["pvname"], kw["value"], self.notify_comparison, self.notify_value, self.email))
+          ts = dt.datetime.fromtimestamp(kw["timestamp"])
+          val = kw["value"]
+          print("[{}]: {} is {} which is {} {}, emailing {}".format(ts, kw["pvname"], val, self.notify_comparison, self.notify_value, self.email))
+          if self.email.count('@') > 0:
+            self.notifyEmail(val, ts)
 
   def connCallback(self, **kw):
     if self.connCallbackInit == False:
@@ -72,6 +75,20 @@ class pvMon():
       self.connCallbackInit = True
     else:
       print("connection change:\n", "  ", kw['pvname'], kw['conn'])
+
+  def notifyEmail(self, value, timestamp):
+      # Build the email message
+      message = "Subject: pvNotifier: {} {} {}\n".format(self.pv_name, self.notify_comparison, self.notify_value)
+      message += "To: {}\n".format(self.email)
+      message += "\n"
+      message += "Time: {}\n".format(timestamp)
+      message += "PV: {}\n".format(self.pv_name)
+      message += "Value: {}\n".format(value)
+      message += "Trigger condition: {} {}\n".format(self.notify_comparison, self.notify_value)
+      
+      # Send the email
+      email_command = "echo \"{}\" | sendmail -t".format(message)
+      os.system(email_command)
 
 
 if __name__ == '__main__':
